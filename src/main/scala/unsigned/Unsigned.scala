@@ -4,15 +4,9 @@ import cats._
 import cats.implicits._
 import org.scalacheck.Arbitrary
 
-import Cast._
-import ToBigInt._
-import FromBigInt._
-import MaxBounded._
-import MinBounded._
-
-final class Unsigned[A: MinBounded : ToBigInt] private (val value: A) {
+final class Unsigned[A: Bounded : Integral] private(val value: A) {
   def toBigInt: BigInt =
-    value.toBigInt - MinBounded[A].minValue.toBigInt
+    Integral[A].toBigInt(value) - Integral[A].toBigInt(Bounded[A].minValue)
 
   override def toString: String = toBigInt.toString
 
@@ -23,48 +17,72 @@ final class Unsigned[A: MinBounded : ToBigInt] private (val value: A) {
 }
 
 object Unsigned {
-  private def apply[A: MinBounded : ToBigInt : FromBigInt, N: ToBigInt](n: N): Unsigned[A] = {
-    assert(n.toBigInt >= BigInt(0), "Integer cannot be negative")
-    assert(n.toBigInt <= MaxBounded[A].maxValue.toBigInt * 2 + 1, "Integer out of range")
-    new Unsigned[A]((n.toBigInt - MinBounded[A].minValue.toBigInt).fromBigInt)
+  import Integral._
+
+  def apply[A: Bounded : Integral, N: Integral](n: N): Unsigned[A] = {
+    new Unsigned[A](Integral[A].fromBigInt(n.toBigInt - Bounded[A].minValue.toBigInt))
   }
 
-  def apply[A: MinBounded : ToBigInt : FromBigInt](n: Byte): Unsigned[A] = apply[A, Byte](n)
+  def apply[A: Bounded : Integral](n: Byte): Unsigned[A] = apply[A, Byte](n)
 
-  def apply[A: MinBounded : ToBigInt : FromBigInt](n: Short): Unsigned[A] = apply[A, Short](n)
+  def apply[A: Bounded : Integral](n: Short): Unsigned[A] = apply[A, Short](n)
 
-  def apply[A: MinBounded : ToBigInt : FromBigInt](n: Int): Unsigned[A] = apply[A, Int](n)
+  def apply[A: Bounded : Integral](n: Int): Unsigned[A] = apply[A, Int](n)
 
-  def apply[A: MinBounded : ToBigInt : FromBigInt](n: Long): Unsigned[A] = apply[A, Long](n)
+  def apply[A: Bounded : Integral](n: Long): Unsigned[A] = apply[A, Long](n)
 
-  def apply[A: MinBounded : ToBigInt : FromBigInt](n: BigInt): Unsigned[A] = apply[A, BigInt](n)
+  def apply[A: Bounded : Integral](n: BigInt): Unsigned[A] = apply[A, BigInt](n)
 
-  implicit def unsignedShow[A: MinBounded : ToBigInt : FromBigInt : Show]: Show[Unsigned[A]] =
+  implicit def unsignedShow[A: Bounded : Integral]: Show[Unsigned[A]] =
     (x: Unsigned[A]) => x.toString
 
-  implicit def unsignedEq[A: MinBounded : ToBigInt : FromBigInt : Eq]: Eq[Unsigned[A]] =
+  implicit def unsignedEq[A: Bounded : Integral : Eq]: Eq[Unsigned[A]] =
     (x: Unsigned[A], y: Unsigned[A]) => x.toBigInt === y.toBigInt
 
-  implicit def unsignedOrder[A: MinBounded : ToBigInt : FromBigInt : Order]: Order[Unsigned[A]] =
+  implicit def unsignedOrder[A: Bounded : Integral : Order]: Order[Unsigned[A]] =
     (x: Unsigned[A], y: Unsigned[A]) =>
         Order[BigInt].compare(x.toBigInt, y.toBigInt)
 
-  implicit def unsignedMonoid[A: MinBounded : ToBigInt : FromBigInt]: Monoid[Unsigned[A]] = {
+  implicit def unsignedMonoid[A: Bounded : Integral]: Monoid[Unsigned[A]] = {
     new Monoid[Unsigned[A]] {
       def combine(x: Unsigned[A], y: Unsigned[A]): Unsigned[A] = {
-        val x_ = x.toBigInt - MinBounded[A].minValue.toBigInt
-        val y_ = y.toBigInt - MinBounded[A].minValue.toBigInt
-        val result = x.toBigInt + y.toBigInt + MinBounded[A].minValue.toBigInt
-        new Unsigned[A](result.fromBigInt)
+        val result = x.toBigInt + y.toBigInt + Bounded[A].minValue.toBigInt
+        new Unsigned[A](Integral[A].fromBigInt(result))
       }
 
-      def empty: Unsigned[A] = new Unsigned[A](MinBounded[A].minValue)
+      def empty: Unsigned[A] = new Unsigned[A](Bounded[A].minValue)
     }
   }
 
-  implicit def unsignedArbitrary[A: Arbitrary]: Arbitrary[Unsigned[A]] =
+  implicit def unsignedArbitrary[A: Arbitrary : Bounded : Integral]: Arbitrary[Unsigned[A]] =
     Arbitrary(
       Arbitrary.arbitrary[A].map {
-        n => new Unsigned[A](n)}
+        n => new Unsigned[A](n)
+      }
     )
+
+  implicit def unsignedBounded[A: Bounded : Integral]: Bounded[Unsigned[A]] =
+    Bounded.instance(
+      new Unsigned[A](Bounded[A].minValue),
+      new Unsigned[A](Bounded[A].maxValue)
+    )
+
+  implicit def unsignedIntegral[A: Bounded : Integral]: Integral[Unsigned[A]] =
+    new Integral[Unsigned[A]] {
+      def toBigInt(n: Unsigned[A]): BigInt = n.toBigInt
+
+      def fromBigInt(n: BigInt): Unsigned[A] = Unsigned(n)
+
+      def add(x: Unsigned[A], y: Unsigned[A]): Unsigned[A] = x |+| y
+
+      def subtract(x: Unsigned[A], y: Unsigned[A]): Unsigned[A] = {
+        val result = x.toBigInt - y.toBigInt + Bounded[A].minValue.toBigInt
+        new Unsigned[A](Integral[A].fromBigInt(result))
+      }
+
+      def multiply(x: Unsigned[A], y: Unsigned[A]): Unsigned[A] = {
+        val result = x.toBigInt * y.toBigInt + Bounded[A].minValue.toBigInt
+        new Unsigned[A](Integral[A].fromBigInt(result))
+      }
+    }
 }
