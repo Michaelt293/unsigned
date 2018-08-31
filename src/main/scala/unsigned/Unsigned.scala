@@ -4,9 +4,11 @@ import cats._
 import cats.implicits._
 import org.scalacheck.Arbitrary
 
+import unsigned.Integral._
+
 final class Unsigned[A: Bounded : Integral] private(val value: A) {
   def toBigInt: BigInt =
-    Integral[A].toBigInt(value) - Integral[A].toBigInt(Bounded[A].minValue)
+    value.toBigInt - Bounded[A].minValue.toBigInt
 
   override def toString: String = toBigInt.toString
 
@@ -17,8 +19,6 @@ final class Unsigned[A: Bounded : Integral] private(val value: A) {
 }
 
 object Unsigned {
-  import Integral._
-
   def apply[A: Bounded : Integral, N: Integral](n: N): Unsigned[A] = {
     new Unsigned[A](Integral[A].fromBigInt(n.toBigInt - Bounded[A].minValue.toBigInt))
   }
