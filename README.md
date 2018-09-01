@@ -10,7 +10,7 @@ age with an unsigned integer type than a signed integer type. In the example bel
 that smart constructors could be used to guard against this issue. This approach, however, introduces
 the issue of having to deal with `Option` or `Either` types.)
 
-```
+```scala
 scala> case class Age(age: Int) extends AnyVal
 defined class Age
 
@@ -22,7 +22,7 @@ This project contains the data type, `Unsigned`. `Unsigned` wraps a signed integ
 to use the integer as if it was unsigned. Values of unsigned may be constructed from any unsigned
 integer type. Care should be taken though to avoid integer underflow or overflow.
 
-```
+```scala
 scala> import unsigned.Unsigned
 import unsigned.Unsigned
 
@@ -41,7 +41,7 @@ res3: unsigned.Unsigned[Byte] = 0
 
 Instances for Cats `Eq`, `Ord`, `Monoid` and `Show` type classes are provided for `Unsigned`.
 
-```
+```scala
 scala> import cats._
 import cats._
 
@@ -56,7 +56,7 @@ A more complete example using `Unsigned` is provided below. In this example, the
 for each word in a block of text is calculated together with the maximum count of each word
 in a sentence.
 
-```
+```scala
 import cats._
 import cats.implicits._
 
@@ -116,7 +116,8 @@ influenced by Haskell.
 ```
 
 Results -
-```
+
+```scala
 scala> stats.filter { case (word, _)  => Set("scala", "haskell", "functional", "programming")(word) }
 res1: Map[String,Stats] =
   Map(
