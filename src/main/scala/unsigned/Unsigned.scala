@@ -6,17 +6,7 @@ import org.scalacheck.Arbitrary
 
 import unsigned.Integral._
 
-final class Unsigned[A: Bounded : Integral] private(val value: A) {
-  def toBigInt: BigInt =
-    value.toBigInt - Bounded[A].minValue.toBigInt
-
-  override def toString: String = toBigInt.toString
-
-  override def equals(that: Any): Boolean = that match {
-    case unsigned: Unsigned[A] => toBigInt == unsigned.toBigInt
-    case _ => false
-  }
-}
+final case class Unsigned[A] private (value: A) extends AnyVal
 
 object Unsigned {
   def apply[A: Bounded : Integral, N: Integral](n: N): Unsigned[A] = {
@@ -34,7 +24,7 @@ object Unsigned {
   def apply[A: Bounded : Integral](n: BigInt): Unsigned[A] = apply[A, BigInt](n)
 
   implicit def unsignedShow[A: Bounded : Integral]: Show[Unsigned[A]] =
-    (x: Unsigned[A]) => x.toString
+    (x: Unsigned[A]) => x.toBigInt.show
 
   implicit def unsignedEq[A: Bounded : Integral : Eq]: Eq[Unsigned[A]] =
     (x: Unsigned[A], y: Unsigned[A]) => x.toBigInt === y.toBigInt
@@ -69,19 +59,20 @@ object Unsigned {
 
   implicit def unsignedIntegral[A: Bounded : Integral]: Integral[Unsigned[A]] =
     new Integral[Unsigned[A]] {
-      def toBigInt(n: Unsigned[A]): BigInt = n.toBigInt
+      def toBigInt(n: Unsigned[A]): BigInt =
+        n.value.toBigInt - Bounded[A].minValue.toBigInt
 
       def fromBigInt(n: BigInt): Unsigned[A] = Unsigned(n)
 
       def add(x: Unsigned[A], y: Unsigned[A]): Unsigned[A] = x |+| y
 
       def subtract(x: Unsigned[A], y: Unsigned[A]): Unsigned[A] = {
-        val result = x.toBigInt - y.toBigInt + Bounded[A].minValue.toBigInt
+        val result = toBigInt(x) + Bounded[A].minValue.toBigInt
         new Unsigned[A](Integral[A].fromBigInt(result))
       }
 
       def multiply(x: Unsigned[A], y: Unsigned[A]): Unsigned[A] = {
-        val result = x.toBigInt * y.toBigInt + Bounded[A].minValue.toBigInt
+        val result = toBigInt(x) * toBigInt(y) + Bounded[A].minValue.toBigInt
         new Unsigned[A](Integral[A].fromBigInt(result))
       }
     }
